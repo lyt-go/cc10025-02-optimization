@@ -1,0 +1,10 @@
+{
+  "asset_id": "分区规划样例1",
+  "plan_id": "PART-0001",
+  "partition_key": "分区规划样例1",
+  "granularity": "分区规划样例1",
+  "estimated_partitions": "分区规划样例1",
+  "maintenance_window": "分区规划样例1",
+  "merge_strategy": "分区规划样例1",
+  "activated_at": "2026-11-19T01:42:58.811133+00:00"
+}

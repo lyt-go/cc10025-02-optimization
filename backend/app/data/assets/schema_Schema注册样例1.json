@@ -1,0 +1,10 @@
+{
+  "schema_id": "SCHE-0001",
+  "asset_id": "Schema注册样例1",
+  "fields": "Schema注册样例1",
+  "forward_compatible": "Schema注册样例1",
+  "backward_compatible": "Schema注册样例1",
+  "summary": "Schema注册样例1",
+  "registered_at": "2026-11-19T01:42:58.810939+00:00",
+  "version_status": "已注册"
+}
