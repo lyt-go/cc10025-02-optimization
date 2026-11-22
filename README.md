@@ -11,12 +11,15 @@
 .
 ├── frontend/                 Vue 3 + Vite + TypeScript 前端
 │   ├── src/views/WorkbenchView.vue|tsx  全部模块共享工作台
-│   ├── src/data/modules.ts              18个业务模块配置
+│   ├── src/views/ColdBudgetPanel.vue    冷存储管理内嵌的冷存预算明细
+│   ├── src/data/modules.ts              19个业务模块配置
 │   ├── src/api/              统一请求封装
 │   └── vite.config.ts        dev server 配置（open: false）
 ├── backend/                  FastAPI（Python） 后端
 │   ├── app/routers/resource.py  通用查询/导出/登记/动作接口
+│   ├── app/routers/cold_budget.py 冷存预算明细/待核计费量/批量发起
 │   ├── app/services/<key>.py    每个模块独立领域逻辑
+│   ├── app/services/cold_budget.py 冷存预算分片计费与整批判定
 │   ├── app/services/base.py     共享服务骨架
 │   └── app/store.py          内存数据仓库与示例数据
 ├── .gitignore
@@ -31,6 +34,14 @@
 cd backend
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ./run.sh
+```
+
+回归测试：
+
+```bash
+cd backend
+.venv/bin/python test_cross_module.py
+.venv/bin/python test_cold_budget.py
 ```
 
 健康检查：`curl http://127.0.0.1:8000/api/health`
@@ -56,6 +67,7 @@ npm run dev
 | 保留规则 | `retention_rule` | 保留规则 | 规则编号、目标资产、保留天数 |
 | 合规检查 | `compliance_check` | 合规规则 | 规则编号、检查维度、合规标准 |
 | 冷存储管理 | `cold_storage` | 冷存任务 | 任务编号、源资产、目标存储 |
+| 冷存预算 | `cold_budget` | 预算分片 | 分片编号、批次号、数据量、金额区间 |
 | 预热回迁 | `hot_prefetch` | 回迁任务 | 任务编号、冷存位置、目标分区 |
 | 版本快照 | `version_snapshot` | 数据快照 | 快照编号、关联资产、快照时间 |
 | 标签体系 | `label_tag` | 数据标签 | 标签编号、标签名称、标签类型 |
@@ -76,6 +88,34 @@ npm run dev
   `frontend/src/domain/<模块>.ts`，用于承载真实业务差异并维持36题位容量。
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
+
+## 冷存预算口径
+
+冷存成本不再按关联任务粗估，而是按分片聚合费用区间：
+
+- 计费量 = 数据量 × 压缩比（ZSTD 0.35 / GZIP 0.50 / SNAPPY 0.60 / 未压缩 1.0）；
+- 费用 = 计费量 × 目标存储单价，单价与压缩比都随计费规则版本（`v1` / `v2`）锁定，
+  一次判定整批使用同一个版本；
+- 数据量支持 `2TB`、`512MB`、`1TB~2TB`（部分大小）、`待估`；无单位按 GB；
+- 已结算分片单列，不并入本批待发起区间，重复结算/确认不会二次扣减；
+- 未知大小分片不按 0 计费：有估算只进费用上界，无估算则整批判定为“待补估算”，
+  任何情况下都不会通过预算阈值；
+- 已知下界不超限但补齐待估后可能越线时，判定为“冲突”，由发起动作只提交有依据
+  且加入后仍在上限内的分片。
+
+接口（冷存储管理直接消费）：
+
+```text
+GET  /api/cold-budget/rules                     计费规则版本与单价/压缩比
+GET  /api/cold-budget/{batch}                   预算明细 + 整批判定
+GET  /api/cold-budget/{batch}/pending-billing   待核分片尚缺的计费量
+GET  /api/cold-budget/{batch}/trace             发起对象 → 金额区间追溯
+POST /api/cold-budget/{batch}/start             按预算发起可提交分片
+POST /api/cold-budget/shards/{id}/size          补齐分片大小（估算/实测）
+```
+
+`cold_storage` 的“发起迁移”会消费同一份预算明细：有预算分片时只提交有依据且在
+上限内的分片，并在“确认完成”时结算对应分片；没有预算分片的旧任务保持原行为。
 
 领域：数据工程
 子方向：数仓与数据湖

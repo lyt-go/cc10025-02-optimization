@@ -86,6 +86,8 @@
       </form>
     </div>
 
+    <ColdBudgetPanel v-if="meta.key === 'cold_storage'" initial-batch="COLD-BATCH-2026Q4" />
+
     <footer class="page-foot">
       <span>共 {{ total }} 条{{ meta.name }}记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -104,6 +106,7 @@ import {
   runAction as applyAction,
 } from '@/api/backend-service'
 import type { EntryRow } from '@/data/types'
+import ColdBudgetPanel from '@/views/ColdBudgetPanel.vue'
 
 const props = defineProps<{ moduleKey: string }>()
 const meta = moduleMeta(props.moduleKey)

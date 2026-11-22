@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.services.base import BaseModuleService
+from app.services.cold_budget import get_budget_service
 from app.store import store
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "assets")
@@ -76,7 +77,11 @@ class CostTrackerService(BaseModuleService):
         return super().run_action(entry_id, action)
 
     def _estimate_storage_cost(self, asset_id: str) -> float:
-        """从冷存储任务估算存储成本。"""
+        """从冷存预算明细取存储成本上界；没有分片依据时才退回旧粗估口径。"""
+        budget = get_budget_service()
+        budget_cost = budget.estimate_asset_cost(asset_id)
+        if budget_cost is not None:
+            return budget_cost
         cold_rows = store.rows("cold_storage")
         for row in cold_rows:
             if str(row.get("源资产")) == asset_id:

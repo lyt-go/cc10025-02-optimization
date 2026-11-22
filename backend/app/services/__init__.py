@@ -9,6 +9,7 @@ from app.services.lineage_graph import LineageGraphService
 from app.services.retention_rule import RetentionRuleService
 from app.services.compliance_check import ComplianceCheckService
 from app.services.cold_storage import ColdStorageService
+from app.services.cold_budget import ColdBudgetService, get_budget_service
 from app.services.hot_prefetch import HotPrefetchService
 from app.services.version_snapshot import VersionSnapshotService
 from app.services.label_tag import LabelTagService
@@ -29,6 +30,7 @@ _SERVICE_CLASSES = [
     RetentionRuleService,
     ComplianceCheckService,
     ColdStorageService,
+    ColdBudgetService,
     HotPrefetchService,
     VersionSnapshotService,
     LabelTagService,
@@ -49,6 +51,9 @@ for cls in _SERVICE_CLASSES:
     instance = cls()
     _INSTANCES[cls.MODULE] = instance
 
+# 预算服务在冷存/成本模块里也会直接引用，容器复用同一个实例。
+_INSTANCES[ColdBudgetService.MODULE] = get_budget_service()
+
 
 def service_for(module: str) -> object | None:
     """按模块key返回领域服务实例。"""
@@ -68,6 +73,7 @@ __all__ = [
     "RetentionRuleService",
     "ComplianceCheckService",
     "ColdStorageService",
+    "ColdBudgetService",
     "HotPrefetchService",
     "VersionSnapshotService",
     "LabelTagService",
